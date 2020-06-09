@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+ASDF_INSTALL_TYPE=${ASDF_INSTALL_TYPE:-version  }
+TMPDIR=${TMPDIR:-/tmp}
+[ -n "$ASDF_INSTALL_VERSION" ] || (>&2 echo 'Missing ASDF_INSTALL_VERSION' && exit 1)
+[ -n "$ASDF_INSTALL_PATH" ] || (>&2 echo 'Missing ASDF_INSTALL_PATH' && exit 1)
+
+install_terraform_lsp() {
+  local install_type=$1
+  local version=$2
+  local install_path=$3
+
+  local bin_install_path="$install_path/bin"
+  local bin_path="${bin_install_path}/terraform-lsp"
+
+  case $(uname | tr '[:upper:]' '[:lower:]') in
+    linux*)
+      local platform=linux_amd64
+      ;;
+    darwin*)
+      local platform=darwin_amd64
+      ;;
+    ms*)
+      local platform=windows_amd64
+      ;;
+    *)
+      local platform=notset
+      ;;
+  esac
+
+  local filename="terraform-lsp_${version}_${platform}"
+  local download_url="$(get_download_url $filename)"
+  local tmp_archive_path="${TMPDIR}/${filename}.tar.gz"
+  local tmp_bin_path="${TMPDIR}/terraform-lsp"
+
+
+
+  echo "Downloading terraform-lsp from ${download_url}"
+  mkdir -p $bin_install_path
+  curl -sL $download_url -o $tmp_archive_path
+
+  echo "Extracting ${tmp_archive_path}"
+  tar -zxf $tmp_archive_path --directory $TMPDIR
+
+  echo "Moving bin to ${bin_path}"
+  cp $tmp_bin_path $bin_path
+
+  echo "Cleaning tmps..."
+  rm -r $tmp_bin_path $tmp_archive_path
+
+  echo "Run: asdf <global | local> terraform-lsp ${version}"
+  chmod +x $bin_path
+}
+
+get_download_url() {
+  local filename="$1"
+  echo "https://github.com/juliosueiras/terraform-lsp/releases/download/v${version}/${filename}.tar.gz"
+}
+
+install_terraform_lsp $ASDF_INSTALL_TYPE $ASDF_INSTALL_VERSION $ASDF_INSTALL_PATH
